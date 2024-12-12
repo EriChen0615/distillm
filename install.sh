@@ -13,3 +13,4 @@ pip install datasets
 pip install sentencepiece
 pip install protobuf
 pip install peft
+pip install -U "huggingface_hub[cli]"
