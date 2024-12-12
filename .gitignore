@@ -3,6 +3,7 @@
 checkpoints/
 data/
 processed_data/
+results/
 
 ### JupyterNotebooks ###
 # gitignore template for Jupyter Notebooks
