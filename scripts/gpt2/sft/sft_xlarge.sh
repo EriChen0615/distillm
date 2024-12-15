@@ -27,7 +27,7 @@ EVAL_BATCH_SIZE=8
 # length
 MAX_LENGTH=512
 # runtime
-SAVE_PATH="${BASE_PATH}/results/gpt2/train/sft"
+SAVE_PATH="${BASE_PATH}/results/gpt2-xlarge/train/sft"
 # seed
 SEED=10
 SEED_ORDER=10
