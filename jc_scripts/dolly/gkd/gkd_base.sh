@@ -12,7 +12,7 @@
 #SBATCH -p ampere
 
 MASTER_ADDR=localhost
-MASTER_PORT=${2-2012}
+MASTER_PORT=${2-2017}
 NNODES=1
 NODE_RANK=0
 GPUS_PER_NODE=${3-1}
@@ -35,13 +35,13 @@ TEACHER_CKPT="${BASE_PATH}/results/gpt2-xlarge/train/sft/e10-bs2-lr5e-05-G1-N1-N
 DATA_DIR="${BASE_PATH}/processed_data/dolly/full/gpt2/"
 # hp
 BATCH_SIZE=2
-LR=0.0005
+LR=0.00005
 GRAD_ACC=1
 EVAL_BATCH_SIZE=8
 # length
 MAX_LENGTH=512
 # runtime
-SAVE_PATH="${BASE_PATH}/results/gpt2-base/train/gkd/base_xl"
+SAVE_PATH="${BASE_PATH}/results/gpt2-base/train/gkd/base_xl_lr=5e-5"
 # seed
 SEED=10
 
@@ -100,7 +100,7 @@ OPTS+=" --student-gen"
 OPTS+=" --mixed-alpha 0.5"
 
 export NCCL_DEBUG=""
-export WANDB_DISABLED=True
+export WANDB_NAME="dolly/gpt2/gkd-train_0.1B_1.5B_241218_LR=5e-5"
 export TF_CPP_MIN_LOG_LEVEL=3
 export PYTHONPATH=${BASE_PATH}
 CMD="torchrun ${DISTRIBUTED_ARGS} ${BASE_PATH}/finetune.py ${OPTS} $@"

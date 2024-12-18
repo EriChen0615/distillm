@@ -36,7 +36,7 @@ from .pipelines import PPOPipeline, LMPipeline
 from .storages import PPORolloutStorage
 from .losses import Loss
 
-from utils import print_rank, save_rank, get_rank, all_gather, save_parallel
+from utils import print_rank, save_rank, get_rank, all_gather, save_parallel, wandblog_rank
 from rouge_metric import compute_metrics
 
 
@@ -45,7 +45,7 @@ class PPOTrainer():
     RL model trainer with an `accelerate` based backend
     """
 
-    def __init__(self, args, tokenizer: AutoTokenizer, reward_fn, ds_config):
+    def __init__(self, args, tokenizer: AutoTokenizer, reward_fn, ds_config, wandb_run=None):
         self.args = args
         self.max_length = args.max_length
         self.ds_config = ds_config
@@ -90,6 +90,9 @@ class PPOTrainer():
             eos_token_id=self.tokenizer.eos_token_id,
             pad_token_id=self.tokenizer.pad_token_id,
         )
+
+        self.wandb_run = wandb_run
+        print("Logging to wandb_run", wandb_run)
 
     def set_teacher_model(self, model):
         self.teacher_model = model
@@ -340,6 +343,14 @@ class PPOTrainer():
                     if self.global_iter_count % self.args.log_interval == 0 and self.iter_count % self.args.gradient_accumulation_steps == 0:
                         logging_stats = {k:v/(self.args.log_interval*self.args.gradient_accumulation_steps) for k,v in logging_stats.items()}
                         log_str = get_log(logging_stats, logging_stats.get("elapsed_time", 0) * self.args.gradient_accumulation_steps)
+                        if get_rank() == 0:
+                            wandblog_rank(
+                                self.wandb_run,
+                                **logging_stats,
+                                step=self.global_iter_count,
+                                ppo_epoch=ppo_epoch,
+                                data_epoch=self.sampler.epochs,
+                            )
                         print_rank("*" * 100)
                         print_rank(log_str)
                         print_rank(self.args.save)
@@ -359,6 +370,14 @@ class PPOTrainer():
                             eval_pt_results = self.evaluate_pt()
                             results.update(eval_pt_results)
                         self.save_evals(preds, results, response_texts)
+                        if get_rank() == 0:
+                            wandblog_rank(
+                                self.wandb_run,
+                                **eval_pt_results,
+                                step=self.global_iter_count,
+                                ppo_epoch=ppo_epoch,
+                                data_epoch=self.sampler.epochs,
+                            )
                         return results
                     
                     self.iter_count += 1
@@ -421,6 +440,10 @@ class PPOTrainer():
             for key in keys:
                 eval_log_str += "| {}: {:.3f} ".format(key, eval_results[key])
             print_rank(eval_log_str)
+            wandblog_rank(
+                self.wandb_run,
+                **eval_results
+            )
             save_rank(eval_log_str, os.path.join(self.args.save, "log.txt"))
 
     def evaluate_ppo(self):  # noqa: C901

@@ -41,7 +41,7 @@ EVAL_BATCH_SIZE=8
 # length
 MAX_LENGTH=512
 # runtime
-SAVE_PATH="${BASE_PATH}/results/gpt2-base/train/seqkd/base_xlarge"
+SAVE_PATH="${BASE_PATH}/results/gpt2-base/train/seqkd/base_xlarge_241218"
 # seed
 SEED=10
 
@@ -98,7 +98,8 @@ OPTS+=" --temperature 1.0"
 
 
 export NCCL_DEBUG=""
-export WANDB_DISABLED=True
+# export WANDB_DISABLED=True
+export WANDB_NAME="dolly/gpt2/seqkd-train_0.1B_1.5B"
 export TF_CPP_MIN_LOG_LEVEL=3
 export PYTHONPATH=${BASE_PATH}
 CMD="torchrun ${DISTRIBUTED_ARGS} ${BASE_PATH}/finetune.py ${OPTS} $@"

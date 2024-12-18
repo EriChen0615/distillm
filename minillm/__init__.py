@@ -17,6 +17,7 @@ def train(
     lm_data: Optional[str] = None,
     eval_lm_data: Optional[str] = None,
     ds_config: Optional[DeepSpeedConfig] = None,
+    wandb_run=None,
 ):
 
     trainer = PPOTrainer(
@@ -24,6 +25,7 @@ def train(
         tokenizer=tokenizer,
         reward_fn=reward_fn,
         ds_config=ds_config,
+        wandb_run=wandb_run,
     )
     trainer.set_teacher_model(teacher_model)
 

@@ -15,6 +15,14 @@ from transformers import (
     AutoConfig,
 )
 
+import wandb
+
+def wandblog_rank(run, rank=0, **kwargs):
+    if run is None:
+        return
+    print(f"wandb log = {kwargs}")
+    run.log(kwargs)
+
 
 def get_entropy(gen_logits, inf_mask, mask, model_parallel=False):
     inf_mask = torch.isinf(gen_logits) | inf_mask
