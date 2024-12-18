@@ -1,6 +1,6 @@
 #! /bin/bash
-#SBATCH -J Dolly-GPT2-base-MiniLLM
 #SBATCH -A BYRNE-SL2-GPU
+#SBATCH -J distillm-base
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:1
@@ -25,21 +25,26 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 
 # model
 BASE_PATH=${1-"."}
-CKPT_NAME="base-init"
-# CKPT="${BASE_PATH}/results/gpt2-base/train/init/gpt2-base"
+CKPT_NAME="gpt2-base"
+# CKPT="${BASE_PATH}/results/gpt2/train/init/${CKPT_NAME}"
 CKPT="${BASE_PATH}/results/gpt2-base/train/sft-init/e3-bs8-lr0.0005-G1-N1-NN1/5253"
 TEACHER_CKPT_NAME="xlarge-sft"
+# TEACHER_CKPT="${BASE_PATH}/results/gpt2/train/sft/gpt2-xlarge/"
 TEACHER_CKPT="${BASE_PATH}/results/gpt2-xlarge/train/sft/e10-bs2-lr5e-05-G1-N1-NN1/70050"
-
 # data
-PROMPT_DATA_DIR="${BASE_PATH}/processed_data/dolly/prompt/gpt2/"
+DATA_DIR="${BASE_PATH}/processed_data/dolly/full/gpt2/"
 LM_DATA_DIR="${BASE_PATH}/processed_data/openwebtext/gpt2/512/10M/"
-# runtime
-SAVE_PATH="${BASE_PATH}/results/gpt2-base/train/minillm/"
 # hp
-GRAD_ACC=1
 BATCH_SIZE=8
-CHUNK_SIZE=16
+LR=0.0005
+GRAD_ACC=1
+EVAL_BATCH_SIZE=64
+# length
+MAX_LENGTH=512
+# runtime
+SAVE_PATH="${BASE_PATH}/results/gpt2-base/train/distill_0.1B_1.5B_241217"
+# seed
+SEED=10
 
 
 OPTS=""
@@ -49,63 +54,65 @@ OPTS+=" --model-path ${CKPT}"
 OPTS+=" --teacher-model-path ${TEACHER_CKPT}"
 OPTS+=" --ckpt-name ${CKPT_NAME}"
 OPTS+=" --teacher-ckpt-name ${TEACHER_CKPT_NAME}"
-OPTS+=" --n-gpu ${GPUS_PER_NODE}"
-OPTS+=" --n-nodes ${NNODES}"
 OPTS+=" --teacher-model-fp16"
-# OPTS+=" --gradient-checkpointing"
+OPTS+=" --n-gpu ${GPUS_PER_NODE}"
 # data
-OPTS+=" --prompt-data-dir ${PROMPT_DATA_DIR}"
+OPTS+=" --data-dir ${DATA_DIR}"
 OPTS+=" --lm-data-dir ${LM_DATA_DIR}"
+OPTS+=" --num-workers 4"
 OPTS+=" --dev-num 1000"
-OPTS+=" --num-workers 0"
 # hp
-OPTS+=" --epochs 10"
-OPTS+=" --total-iters 5000"
-OPTS+=" --kd-ratio 0.5"
+OPTS+=" --lr ${LR}"
 OPTS+=" --batch-size ${BATCH_SIZE}"
-OPTS+=" --lr 5e-6"
-OPTS+=" --lr-min 5e-6"
+OPTS+=" --eval-batch-size ${EVAL_BATCH_SIZE}"
 OPTS+=" --gradient-accumulation-steps ${GRAD_ACC}"
-OPTS+=" --max-length 512"
+OPTS+=" --warmup-iters 0"
+OPTS+=" --lr-decay-style cosine"
+OPTS+=" --weight-decay 1e-2"
+OPTS+=" --clip-grad 1.0"
+OPTS+=" --epochs 20"
+OPTS+=" --kd-ratio 1.0"
+# length
+OPTS+=" --max-length ${MAX_LENGTH}"
 OPTS+=" --max-prompt-length 256"
-OPTS+=" --warmup-iters 100"
 # runtime
+OPTS+=" --do-train"
+OPTS+=" --do-valid"
+OPTS+=" --eval-gen"
+OPTS+=" --save-interval -1"
+OPTS+=" --eval-interval -1"
+OPTS+=" --log-interval 4"
+OPTS+=" --mid-log-num -1"
 OPTS+=" --save ${SAVE_PATH}"
-OPTS+=" --seed 10"
-OPTS+=" --seed-ppo 42"
-OPTS+=" --seed-lm 7"
-OPTS+=" --save-interval 500"
-OPTS+=" --eval-interval 100"
-OPTS+=" --log-interval 16"
-OPTS+=" --mid-log-num 1"
-# ppo
-OPTS+=" --type minillm"
-OPTS+=" --ppo-epochs 4"
-OPTS+=" --num-rollouts 256"
-OPTS+=" --chunk-size ${CHUNK_SIZE}"
-# minillm
-OPTS+=" --length-norm"
-OPTS+=" --single-step-reg"
-OPTS+=" --teacher-mixed-alpha 0.2"
-# reward
-OPTS+=" --reward-scaling 0.5"
-OPTS+=" --cliprange-reward 100"
+# seed
+OPTS+=" --seed ${SEED}"
+# deepspeed
+# OPTS+=" --deepspeed"
+OPTS+=" --deepspeed_config ${BASE_PATH}/configs/deepspeed/ds_config.json"
+# type
+OPTS+=" --type adaptive-sfkl"
 # gen
 OPTS+=" --do-sample"
 OPTS+=" --top-k 0"
 OPTS+=" --top-p 1.0"
 OPTS+=" --temperature 1.0"
-# deepspeed
-# OPTS+=" --deepspeed"
-OPTS+=" --deepspeed_config ${BASE_PATH}/configs/deepspeed/ds_config.json"
+# distillm
+OPTS+=" --student-gen"
+OPTS+=" --gen-num-beams 1"
+OPTS+=" --gen-top-p 1.0"
+OPTS+=" --init-threshold 0.0"
+OPTS+=" --loss-eps 0.1"
+OPTS+=" --capacity 1000"
+
 
 export NCCL_DEBUG=""
-export WANDB_DISABLED=True
+# export WANDB_DISABLED=False
+export WANDB_NAME="dolly/gpt2/distillm-train_0.1B_1.5B"
 export TF_CPP_MIN_LOG_LEVEL=3
 export PYTHONPATH=${BASE_PATH}
-CMD="torchrun ${DISTRIBUTED_ARGS} ${BASE_PATH}/train_minillm.py ${OPTS} $@"
+CMD="torchrun ${DISTRIBUTED_ARGS} ${BASE_PATH}/finetune.py ${OPTS} $@"
 
 echo ${CMD}
 echo "PYTHONPATH=${PYTHONPATH}"
 mkdir -p ${SAVE_PATH}
-${CMD}
+CODE_BASE=HF ${CMD}

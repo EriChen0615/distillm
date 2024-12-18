@@ -14,8 +14,8 @@ from rich.table import Table
 from tqdm import tqdm
 from transformers import (
     AutoTokenizer,
-    GenerationConfig,
-    mpu)
+    GenerationConfig)
+    # mpu)
 
 from transformers import get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup
 
@@ -596,6 +596,8 @@ class PPOTrainer():
 
         mix_in_model, mix_in_alpha = None, None
         if teacher_mixed_sample:
+            # mix_in_model = mix_in_model or self.teacher_model
+            # mix_in_alpha = mix_in_alpha or self.args.teacher_mixed_alpha
             mix_in_model = self.teacher_model
             mix_in_alpha = self.args.teacher_mixed_alpha
 
@@ -609,8 +611,8 @@ class PPOTrainer():
                 attention_mask=attention_mask,
                 generation_config=generation_config,
                 max_new_tokens=max_new_tokens,
-                mix_in_model=mix_in_model,
-                mix_in_alpha=mix_in_alpha
+                # mix_in_model=mix_in_model, #BUG: JC. mix_in_alpha and mix_in_model not used! Cause bug.
+                # mix_in_alpha=mix_in_alpha
             )
             
             gen.sequences = F.pad(

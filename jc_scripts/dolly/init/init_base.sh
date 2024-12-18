@@ -1,10 +1,10 @@
 #! /bin/bash
+#SBATCH -J Dolly-GPT2-base-SFT-init
 #SBATCH -A BYRNE-SL2-GPU
-#SBATCH -J seqkd_base
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:1
-#SBATCH --time=24:00:00
+#SBATCH --time=12:00:00
 #SBATCH --mail-type=BEGIN,END,FAIL
 #! Uncomment this to prevent the job from being requeued (e.g. if
 #! interrupted by node failure or system downtime):
@@ -27,21 +27,18 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 BASE_PATH=${1-"."}
 CKPT_NAME="gpt2-base"
 CKPT="${BASE_PATH}/checkpoints/${CKPT_NAME}/"
-TEACHER_CKPT_NAME="xlarge-sft"
-# TEACHER_CKPT="${BASE_PATH}/results/gpt2/train/sft/gpt2-xlarge/"
-TEACHER_CKPT="${BASE_PATH}/results/gpt2-xlarge/train/sft/e10-bs2-lr5e-05-G1-N1-NN1/70050/"
+# CKPT="gpt2" # download automatically
 # data
-DATA_DIR="${BASE_PATH}/processed_data/dolly/pseudo/gpt2-xlarge-sft/"
-LM_DATA_DIR="${BASE_PATH}/processed_data/openwebtext/gpt2/512/10M/"
+DATA_DIR="${BASE_PATH}/processed_data/dolly/full/gpt2/"
 # hp
-BATCH_SIZE=2
+BATCH_SIZE=8
 LR=0.0005
 GRAD_ACC=1
-EVAL_BATCH_SIZE=8
+EVAL_BATCH_SIZE=32
 # length
 MAX_LENGTH=512
 # runtime
-SAVE_PATH="${BASE_PATH}/results/gpt2-base/train/seqkd/base_xlarge"
+SAVE_PATH="${BASE_PATH}/results/gpt2-base/train/sft-init"
 # seed
 SEED=10
 
@@ -50,15 +47,12 @@ OPTS=""
 # model
 OPTS+=" --base-path ${BASE_PATH}"
 OPTS+=" --model-path ${CKPT}"
-OPTS+=" --teacher-model-path ${TEACHER_CKPT}"
 OPTS+=" --ckpt-name ${CKPT_NAME}"
-OPTS+=" --teacher-ckpt-name ${TEACHER_CKPT_NAME}"
-OPTS+=" --teacher-model-fp16"
 OPTS+=" --n-gpu ${GPUS_PER_NODE}"
+# OPTS+=" --gradient-checkpointing"
 # data
 OPTS+=" --data-dir ${DATA_DIR}"
-OPTS+=" --lm-data-dir ${LM_DATA_DIR}"
-OPTS+=" --num-workers 4"
+OPTS+=" --num-workers 0"
 OPTS+=" --dev-num 1000"
 # hp
 OPTS+=" --lr ${LR}"
@@ -69,8 +63,7 @@ OPTS+=" --warmup-iters 0"
 OPTS+=" --lr-decay-style cosine"
 OPTS+=" --weight-decay 1e-2"
 OPTS+=" --clip-grad 1.0"
-OPTS+=" --epochs 20"
-OPTS+=" --kd-ratio 1.0"
+OPTS+=" --epochs 3"
 # length
 OPTS+=" --max-length ${MAX_LENGTH}"
 OPTS+=" --max-prompt-length 256"
@@ -89,7 +82,7 @@ OPTS+=" --seed ${SEED}"
 # OPTS+=" --deepspeed"
 OPTS+=" --deepspeed_config ${BASE_PATH}/configs/deepspeed/ds_config.json"
 # type
-OPTS+=" --type kd"
+OPTS+=" --type lm"
 # gen
 OPTS+=" --do-sample"
 OPTS+=" --top-k 0"

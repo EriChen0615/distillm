@@ -5,6 +5,7 @@ data/
 processed_data/
 results/
 *.out
+wandb/
 
 ### JupyterNotebooks ###
 # gitignore template for Jupyter Notebooks

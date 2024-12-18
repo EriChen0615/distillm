@@ -12,5 +12,10 @@
         "loss_scale_window": 2000,
         "hysteresis": 4
     },
-    "wall_clock_breakdown": false
+    "wall_clock_breakdown": false,
+    "wandb": {
+        "enabled": true,
+        "group": "JC_HPC",
+        "project": "distilLLM"
+    }
 }
