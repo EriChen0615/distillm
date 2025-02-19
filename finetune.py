@@ -46,6 +46,7 @@ from peft import PeftModel
 
 torch.set_num_threads(4)
 
+DEBUG_MODE = False
 
 def get_teacher_model(args, device):
     config = AutoConfig.from_pretrained(args.teacher_model_path)
@@ -468,6 +469,7 @@ def evaluate(args, tokenizer, model, dataset: LMTrainDataset, split, epoch, devi
     
     with torch.no_grad():
         for it, (model_batch, no_model_batch, gen_data) in enumerate(tqdm(dataloader, desc="Evaluating", disable=(dist.get_rank() != 0))):
+
             print_rank(f"{it}/{len(dataloader)}")
             dataset.move_to_device(model_batch, no_model_batch, gen_data, device)
             logits = model(**model_batch).logits

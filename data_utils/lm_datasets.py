@@ -54,9 +54,10 @@ class LMTrainDataset(Dataset):
         input_ids = samp["input_ids"]
         source_len = 1
         
-        prompt = None
-        if 65535 in input_ids:
-            source_len = np.where(input_ids==65535)[0][0]
+        separator_token = 4294967295 if self.args.model_type == "qwen" else 65535 #NOTE JC:  4294967295 is max of uint32. Qwen needs uint32 instead of uint16 due to vocabulary size.  
+        # print(f"Model Type={self.args.model_type}. Separator token: {separator_token}")
+        if separator_token in input_ids:
+            source_len = np.where(input_ids==separator_token)[0][0]
             prompt = input_ids[:source_len]
             input_ids = np.concatenate([input_ids[:source_len], input_ids[source_len+1:]], axis=0)
         input_ids = input_ids[:self.max_length]
