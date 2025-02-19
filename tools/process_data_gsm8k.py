@@ -24,7 +24,7 @@ class Encoder(object):
         self.args = args
 
     def initializer(self):
-        Encoder.tokenizer = AutoTokenizer.from_pretrained(self.args.model_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.args.model_path)
 
     def encode(self, line):
         if self.args.model_type!="qwen":
@@ -45,15 +45,15 @@ class Encoder(object):
         )
             
         response = line["answer"]
-        prompt_tokens = Encoder.tokenizer.encode(prompt, add_special_tokens=False)
+        prompt_tokens = self.tokenizer.encode(prompt, add_special_tokens=False)
         
         # Verify token IDs are valid
-        if max(prompt_tokens) >= len(Encoder.tokenizer):
+        if max(prompt_tokens) >= len(self.tokenizer):
             print(f"Max token ID in prompt: {max(prompt_tokens)}")
-            print(f"Vocab size: {len(Encoder.tokenizer)}")
-            raise ValueError(f"Token ID {max(prompt_tokens)} exceeds vocab size {len(Encoder.tokenizer)}")
+            print(f"Vocab size: {len(self.tokenizer)}")
+            raise ValueError(f"Token ID {max(prompt_tokens)} exceeds vocab size {len(self.tokenizer)}")
         
-        full_tokens = Encoder.tokenizer.encode(prompt + response, add_special_tokens=False) + [Encoder.tokenizer.eos_token_id]
+        full_tokens = self.tokenizer.encode(prompt + response, add_special_tokens=False) + [self.tokenizer.eos_token_id]
         response_tokens = full_tokens[len(prompt_tokens):]
         
         if len(prompt_tokens) > self.args.max_prompt_length:
@@ -61,7 +61,7 @@ class Encoder(object):
             # return None, None, None, None, len(line)
         
         if self.args.model_type == "qwen":
-            separator_token = 4294967295  # or another suitable value that won't conflict with real token IDs
+            separator_token = 160000  # or another suitable value that won't conflict with real token IDs
         else:
             separator_token = 65535
         
@@ -95,7 +95,7 @@ def main():
         print(f"\nProcessing {split} split...")
         encoder = Encoder(args)
         encoder.initializer()
-        
+
         proc_start = time.time()
         total_bytes_processed = 0
         
@@ -111,46 +111,39 @@ def main():
             
         print(f"Using {binary_builder._dtype} builder")
         
-        inst_num = 0
-        print("#"*10, split, "#"*10)
-        
+        inst_num = 0  # Track actual processed examples
         prompt_lens = []
         response_lens = []
         
         json_file = open(os.path.join(args.processed_data_dir, f"{split}.jsonl"), "w")
         
-        for lid, example in enumerate(all_data[split]):
-            if DEBUG_MODE:
-                print(f"\nProcessing example {lid}:")
-                print("Raw example:", example)
-            
+        # First, collect all valid examples
+        valid_examples = []
+        for example in all_data[split]:
             line, prompt_str, prompt, response, bytes_processed = encoder.encode(example)
-            
-            if DEBUG_MODE:
-                print("\nProcessed data:")
-                print("Formatted prompt:", prompt_str)
-                print("Prompt tokens:", prompt[:50], "..." if len(prompt) > 50 else "")
-                print("Response tokens:", response[:50], "..." if len(response) > 50 else "")
-            
-            total_bytes_processed += bytes_processed
-            if prompt is None:
-                if DEBUG_MODE:
-                    print("Skipping example - prompt is None")
+            if prompt is None:  # Skip invalid examples
                 continue
+                
+            if args.only_prompt and len(prompt) >= args.max_length:
+                continue
+                
+            valid_examples.append((line, prompt_str, prompt, response, bytes_processed))
+        
+        print(f"Found {len(valid_examples)} valid examples out of {len(all_data[split])} total")
+        
+        # Then process valid examples
+        for lid, (line, prompt_str, prompt, response, bytes_processed) in enumerate(valid_examples):
+            total_bytes_processed += bytes_processed
             
             if args.only_prompt:
-                if len(prompt) < args.max_length:
-                    binary_builder.add_item(torch.IntTensor(prompt))
-                else:
-                    if DEBUG_MODE:
-                        print("Skipping example - prompt too long")
-                    continue
+                binary_builder.add_item(torch.IntTensor(prompt))
             else:
                 if args.model_type == "qwen":
                     separator_token = 160000  # or another suitable value that won't conflict with real token IDs
                 else:
                     separator_token = 65535
-                binary_builder.add_item(torch.IntTensor(prompt + [separator_token] + response))
+                combined = np.array(prompt + [separator_token] + response, dtype=binary_builder._dtype)
+                binary_builder.add_item(torch.from_numpy(combined))
 
             json_file.write(json.dumps({
                 "instruction": MATH_INSTRUCTION,
@@ -163,27 +156,20 @@ def main():
             response_lens.append(len(response))
 
             inst_num += 1
-            if lid % 1000 == 0:  # Changed back to 1000 for production
+            if lid % 1000 == 0:
                 current = time.time()
                 elapsed = current - proc_start
                 mbs = total_bytes_processed / elapsed / 1024 / 1024
-                print(f"Processed {lid} documents. {inst_num} instances.",
+                print(f"Processed {lid}/{len(valid_examples)} documents. {inst_num} instances.",
                     f"({lid/elapsed:.2f} docs/s, {mbs:.2f} MB/s).")
-            
-            # Debug pause only in debug mode
-            if DEBUG_MODE and lid == 5:
-                print("\nFirst 5 examples processed. Check the output above.")
-                user_input = input("Press Enter to continue, or 'q' to quit: ")
-                if user_input.lower() == 'q':
-                    break
 
         binary_builder.finalize(idx_file)
         json_file.close()
                 
         print("\nFinal Statistics:")
-        print("Total examples processed:", len(prompt_lens))
-        print("Prompt lengths - Mean:", np.mean(prompt_lens), "Max:", np.max(prompt_lens), "Min:", np.min(prompt_lens))
-        print("Response lengths - Mean:", np.mean(response_lens), "Max:", np.max(response_lens), "Min:", np.min(response_lens))
+        print(f"Total examples processed: {inst_num}")
+        print(f"Prompt lengths - Mean: {np.mean(prompt_lens):.1f}, Max: {np.max(prompt_lens)}, Min: {np.min(prompt_lens)}")
+        print(f"Response lengths - Mean: {np.mean(response_lens):.1f}, Max: {np.max(response_lens)}, Min: {np.min(response_lens)}")
 
         # Add after writing the binary file
         # Verify the written data

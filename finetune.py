@@ -289,7 +289,7 @@ def finetune(args, tokenizer: AutoTokenizer, model: deepspeed.DeepSpeedEngine, o
             st_time = time.time()
             
             # # sampling ratio:
-            samp_threshold = adaptive_threshold * (1 - global_step / args.total_iters)
+            samp_threshold = adaptive_threshold * (1 - global_step / args.total_iters) if adaptive_threshold is not None else (1 - global_step / args.total_iters)
             if "adaptive" in args.type:
                 if args.replay_ratio == "constant":
                     samp_threshold = adaptive_threshold * 0.5

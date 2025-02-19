@@ -20,7 +20,7 @@ CKPT="../../hf_models/${CKPT_NAME}"
 #CKPT="${BASE_PATH}/checkpoints/${CKPT_NAME}/"
 # CKPT="gpt2" # download automatically
 # data
-DATA_DIR="${BASE_PATH}/processed_data/qwen2.5/gsm8k/full/qwen/"
+DATA_DIR="${BASE_PATH}/processed_data/gsm8k/qwen2.5/full/qwen/"
 # hp
 BATCH_SIZE=8
 LR=0.00005
@@ -29,7 +29,7 @@ EVAL_BATCH_SIZE=4
 # length
 MAX_LENGTH=2048
 # runtime
-SAVE_PATH="${BASE_PATH}/results/qwen2.5-3B-Instruct/gsm8k/train/sft"
+SAVE_PATH="${BASE_PATH}/results/qwen2.5-0.5B-Instruct/gsm8k/train/sft"
 # seed
 SEED=10
 
@@ -45,7 +45,7 @@ OPTS+=" --model-type qwen"
 # data
 OPTS+=" --data-dir ${DATA_DIR}"
 OPTS+=" --num-workers 0"
-OPTS+=" --dev-num 1000"
+OPTS+=" --dev-num 256"
 # hp
 OPTS+=" --lr ${LR}"
 OPTS+=" --batch-size ${BATCH_SIZE}"

@@ -109,9 +109,12 @@ class DistributedMMapIndexedDataset(torch.utils.data.Dataset):
             return self._len
 
     def __init__(self, path, name, rank_number, rank_total, cache = None):
-        
         super().__init__()
-
+        print(f"\nInitializing Dataset:")
+        print(f"Path: {path}")
+        print(f"Name: {name}")
+        print(f"Rank: {rank_number}/{rank_total}")
+        
         self._path = path
         self._name = name
         self._state = 0
@@ -127,6 +130,10 @@ class DistributedMMapIndexedDataset(torch.utils.data.Dataset):
         self._bin_buffer_mmap = None
         self.max_state, self.history = self._probe_data_path(self._path, self._name, self._rank_total)
         self.total_length = self.history[self.max_state-1][1]
+        
+        print(f"Max state: {self.max_state}")
+        print(f"History: {self.history}")
+        print(f"Total length: {self.total_length}")
 
         self._do_init(self._path, self._name, self._cache, self._state)
 
@@ -179,14 +186,19 @@ class DistributedMMapIndexedDataset(torch.utils.data.Dataset):
         return self.total_length
 
     def _next_file(self):
+        old_state = self._state
         self._state += 1
         if self._state >= self.max_state:
             self._state = 0
-        # print_rank(f"next_file: {self._state}")
+        # print(f"\nSwitching files: {old_state} -> {self._state}")
+        # print(f"Current index range: {self.history[self._state]}")
         self._do_init(self._path, self._name, self._cache, self._state)
     
     def __relative_idx(self, idx):
         res = idx - self.history[self._state][0]
+        # print(f"\nConverting index: global {idx} -> local {res}")
+        # print(f"Current state: {self._state}")
+        # print(f"Current range: {self.history[self._state]}")
         return res
 
     def __slice_item(self, start, stop):
@@ -198,9 +210,16 @@ class DistributedMMapIndexedDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         if isinstance(idx, int):
+            # print(f"\nFetching item {idx}")
+            # print(f"Current state: {self._state}")
+            # print(f"Current range: {self.history[self._state]}")
+            
             while idx >= self.history[self._state][1] or idx < self.history[self._state][0]:
+                print(f"Index {idx} not in current range {self.history[self._state]}")
                 self._next_file()
+                
             ptr, size = self._index[self.__relative_idx(idx)]
+            # print(f"Found item: ptr={ptr}, size={size}")
             return np.frombuffer(self._bin_buffer, dtype=self._index.dtype, count=size, offset=ptr)
         elif isinstance(idx, slice):
             raise NotImplementedError()
