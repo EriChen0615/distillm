@@ -60,7 +60,7 @@ class Encoder(object):
             prompt_tokens = prompt_tokens[:self.args.max_prompt_length]
             # return None, None, None, None, len(line)
         
-        if args.model_type == "qwen":
+        if self.args.model_type == "qwen":
             separator_token = 4294967295  # or another suitable value that won't conflict with real token IDs
         else:
             separator_token = 65535
@@ -104,11 +104,13 @@ def main():
 
         if args.model_type!="qwen":
             binary_builder = make_builder(bin_file, impl="mmap", dtype=np.uint16)
-            print("Using uint16 builder")
+            separator_token = 65535  # max uint16
         else:
             binary_builder = make_builder(bin_file, impl="mmap", dtype=np.uint32)
-            print("Using uint32 builder")
-
+            separator_token = 160000 # Qwen's vocab size (safe separator value)
+            
+        print(f"Using {binary_builder._dtype} builder")
+        
         inst_num = 0
         print("#"*10, split, "#"*10)
         
@@ -144,6 +146,10 @@ def main():
                         print("Skipping example - prompt too long")
                     continue
             else:
+                if args.model_type == "qwen":
+                    separator_token = 160000  # or another suitable value that won't conflict with real token IDs
+                else:
+                    separator_token = 65535
                 binary_builder.add_item(torch.IntTensor(prompt + [separator_token] + response))
 
             json_file.write(json.dumps({

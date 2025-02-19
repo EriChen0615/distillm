@@ -54,7 +54,7 @@ class LMTrainDataset(Dataset):
         input_ids = samp["input_ids"]
         source_len = 1
         
-        separator_token = 4294967295 if self.args.model_type == "qwen" else 65535 #NOTE JC:  4294967295 is max of uint32. Qwen needs uint32 instead of uint16 due to vocabulary size.  
+        separator_token = 160000 if self.args.model_type == "qwen" else 65535 #NOTE JC:  4294967295 is max of uint32. Qwen needs uint32 instead of uint16 due to vocabulary size.  
         # print(f"Model Type={self.args.model_type}. Separator token: {separator_token}")
         if separator_token in input_ids:
             source_len = np.where(input_ids==separator_token)[0][0]
