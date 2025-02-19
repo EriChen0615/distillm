@@ -25,7 +25,7 @@ DATA_DIR="${BASE_PATH}/processed_data/gsm8k/qwen2.5/full/qwen/"
 BATCH_SIZE=8
 LR=0.00005
 GRAD_ACC=1
-EVAL_BATCH_SIZE=4
+EVAL_BATCH_SIZE=32
 # length
 MAX_LENGTH=512
 # runtime
@@ -45,7 +45,8 @@ OPTS+=" --model-type qwen"
 # data
 OPTS+=" --data-dir ${DATA_DIR}"
 OPTS+=" --num-workers 0"
-OPTS+=" --dev-num 256"
+# OPTS+=" --dev-num 256"
+OPTS+=" --dev-num 32"
 # hp
 OPTS+=" --lr ${LR}"
 OPTS+=" --batch-size ${BATCH_SIZE}"

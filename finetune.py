@@ -44,6 +44,8 @@ from rouge_metric import compute_metrics
 
 from peft import PeftModel
 
+from gsm8k_eval import compute_gsm8k_metrics
+
 torch.set_num_threads(4)
 
 DEBUG_MODE = False
@@ -548,7 +550,12 @@ def evaluate(args, tokenizer, model, dataset: LMTrainDataset, split, epoch, devi
             references = dataset.answers
             responses = responses[:len(references)]
             
-            res = compute_metrics(responses, references)
+            if 'gsm8k' in args.data_dir:
+                refs = [r[0] for r in references]
+                res = compute_gsm8k_metrics(responses, refs)
+                print(f"\nGSM8K Accuracy: {res['accuracy']:.2%}")
+            else:
+                res = compute_metrics(responses, references)
         
             eval_dir = os.path.join(args.save, "eval", str(epoch))
             print_rank(eval_dir)
