@@ -21,7 +21,7 @@ class Encoder(object):
 
     def encode(self, line):
         line = json.loads(line)
-        if "input" not in line or len(line["input"]) == 0:
+        if ("context" not in line or len(line["context"]) == 0) and ("input" not in line or len(line['input']) == 0):
             if self.args.model_type!="qwen":
                 template = (
                     "Below is an instruction that describes a task. "
@@ -48,9 +48,15 @@ class Encoder(object):
                     "Write a response that appropriately completes the request.\n\n"
                     "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:\n<|im_end|><|im_start|>Assistant:"
                 )
-            prompt = template.format(instruction=line["instruction"], input=line["input"])
+            if 'context' in line:
+                prompt = template.format(instruction=line["instruction"], input=line["context"])
+            else:
+                prompt = template.format(instruction=line["instruction"], input=line["input"])
             
-        response = line["output"]
+        if 'response' in line:
+            response = line["response"]
+        else:
+            response = line["output"]
         prompt_tokens = Encoder.tokenizer.encode(prompt, add_special_tokens=False)
         full_tokens = Encoder.tokenizer.encode(prompt + response, add_special_tokens=False) + [Encoder.tokenizer.eos_token_id]
         response_tokens = full_tokens[len(prompt_tokens):]
@@ -71,7 +77,8 @@ def main():
 
     os.makedirs(args.processed_data_dir, exist_ok=True)
     
-    with open(os.path.join(args.data_dir, "raw.jsonl")) as f:
+    # with open(os.path.join(args.data_dir, "raw.jsonl")) as f:
+    with open(os.path.join(args.data_dir, "databricks-dolly-15k.jsonl")) as f:
         raw_data = f.readlines()
 
     if args.dev_num > 0:
@@ -128,8 +135,8 @@ def main():
             json_file.write(json.dumps({
                 "instruction": line["instruction"],
                 "prompt": prompt_str,
-                "input": line["input"],
-                "output": line["output"],
+                "input": line["context"] if 'context' in line else line['input'],
+                "output": line["response"] if 'response' in line else line['output'],
             }) + "\n")
 
             prompt_lens.append(len(prompt))

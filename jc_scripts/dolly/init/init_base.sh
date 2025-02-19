@@ -1,10 +1,21 @@
 #! /bin/bash
+#SBATCH -J Dolly-GPT2-base-SFT-init
+#SBATCH -A BYRNE-SL2-GPU
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --gres=gpu:1
+#SBATCH --time=12:00:00
+#SBATCH --mail-type=BEGIN,END,FAIL
+#! Uncomment this to prevent the job from being requeued (e.g. if
+#! interrupted by node failure or system downtime):
+##SBATCH --no-requeue
+#SBATCH -p ampere
 
 MASTER_ADDR=localhost
 MASTER_PORT=${2-2012}
 NNODES=1
 NODE_RANK=0
-GPUS_PER_NODE=${3-16}
+GPUS_PER_NODE=${3-1}
 
 DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
                   --nnodes $NNODES \
@@ -13,7 +24,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
                   --master_port $MASTER_PORT"
 
 # model
-BASE_PATH=${1-"/home/MiniLLM"}
+BASE_PATH=${1-"."}
 CKPT_NAME="gpt2-base"
 CKPT="${BASE_PATH}/checkpoints/${CKPT_NAME}/"
 # CKPT="gpt2" # download automatically
@@ -27,7 +38,7 @@ EVAL_BATCH_SIZE=32
 # length
 MAX_LENGTH=512
 # runtime
-SAVE_PATH="${BASE_PATH}/results/gpt2-base/train/sft"
+SAVE_PATH="${BASE_PATH}/results/gpt2-base/train/sft-init"
 # seed
 SEED=10
 
@@ -52,7 +63,7 @@ OPTS+=" --warmup-iters 0"
 OPTS+=" --lr-decay-style cosine"
 OPTS+=" --weight-decay 1e-2"
 OPTS+=" --clip-grad 1.0"
-OPTS+=" --epochs 20"
+OPTS+=" --epochs 3"
 # length
 OPTS+=" --max-length ${MAX_LENGTH}"
 OPTS+=" --max-prompt-length 256"
@@ -68,7 +79,7 @@ OPTS+=" --save ${SAVE_PATH}"
 # seed
 OPTS+=" --seed ${SEED}"
 # deepspeed
-OPTS+=" --deepspeed"
+# OPTS+=" --deepspeed"
 OPTS+=" --deepspeed_config ${BASE_PATH}/configs/deepspeed/ds_config.json"
 # type
 OPTS+=" --type lm"

@@ -27,7 +27,7 @@ EVAL_BATCH_SIZE=8
 # length
 MAX_LENGTH=512
 # runtime
-SAVE_PATH="${BASE_PATH}/results/gpt2/train/sft"
+SAVE_PATH="${BASE_PATH}/results/gpt2-xlarge/train/sft"
 # seed
 SEED=10
 SEED_ORDER=10
@@ -69,8 +69,8 @@ OPTS+=" --save ${SAVE_PATH}"
 # seed
 OPTS+=" --seed ${SEED}"
 OPTS+=" --seed-order ${SEED_ORDER}"
-# deepspeed
-OPTS+=" --deepspeed"
+# deepspeed #JC do not use deepspeed
+# OPTS+=" --deepspeed"
 OPTS+=" --deepspeed_config ${BASE_PATH}/configs/deepspeed/ds_config.json"
 # type
 OPTS+=" --type lm"

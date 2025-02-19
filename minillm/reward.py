@@ -1,8 +1,8 @@
 import torch
 from transformers import (
     AutoModelForCausalLM,
-    AutoTokenizer,
-    mpu)
+    AutoTokenizer)
+    # mpu)
 
 
 class Reward():

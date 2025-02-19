@@ -70,6 +70,16 @@ def main():
     
     teacher_model = get_teacher_model(args, device)
     tokenizer = get_tokenizer(args)
+
+    wandb_run = None
+    if 'wandb' in ds_config and ds_config['wandb']['enabled'] == True:
+        import wandb
+        wandb_run = wandb.init(
+            project=ds_config['wandb']['project'],
+            group=ds_config['wandb']['group'],
+        )
+        ds_config.pop('wandb') # use custom wandb logging
+    print(f"wandb_run = {wandb_run}")
     
     reward = Reward(args, tokenizer, teacher_model)
     
@@ -83,6 +93,7 @@ def main():
         eval_prompt_data=args.prompt_data_dir,
         lm_data=args.lm_data_dir,
         eval_lm_data=args.lm_data_dir,
+        wandb_run=wandb_run,
     )
 
 

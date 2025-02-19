@@ -30,7 +30,7 @@ from arguments import get_args
 
 from data_utils.lm_datasets import LMTrainDataset
 from utils import get_optimizer_params, get_optimizer_params_peft, print_args, initialize
-from utils import print_rank, get_rank
+from utils import print_rank, get_rank, wandblog_rank
 from utils import save_rank
 from utils import all_gather
 from utils import load_parallel, save_parallel
@@ -236,7 +236,7 @@ def get_teacher_lm_loss(args, tokenizer, model, teacher_model, model_batch):
     return lm_loss
 
 
-def finetune(args, tokenizer: AutoTokenizer, model: deepspeed.DeepSpeedEngine, optimizer: AdamW, lr_scheduler, dataset, device, teacher_model=None):
+def finetune(args, tokenizer: AutoTokenizer, model: deepspeed.DeepSpeedEngine, optimizer: AdamW, lr_scheduler, dataset, device, teacher_model=None, wandb_run=None):
     print_rank("Start Fine-tuning")
 
     # print_inspect(model, '*')
@@ -264,7 +264,7 @@ def finetune(args, tokenizer: AutoTokenizer, model: deepspeed.DeepSpeedEngine, o
     total_loss, total_distil_loss, total_time = 0.0, 0.0, 0.0
     
     adaptive_threshold = args.init_threshold if "adaptive" in args.type else None
-    prev_avg_loss = evaluate(args, tokenizer, model, dataset["dev"], "dev", 0, device, adaptive_threshold)
+    prev_avg_loss = evaluate(args, tokenizer, model, dataset["dev"], "dev", 0, device, adaptive_threshold, wandb_run=wandb_run) #NOTE NO FIRST EVALUATION
     replay_buffer = ReplayBuffer(args)
     
     for epoch in range(args.epochs):
@@ -382,12 +382,39 @@ def finetune(args, tokenizer: AutoTokenizer, model: deepspeed.DeepSpeedEngine, o
                 mid_log_step = 1 if mid_log_step == 0 else mid_log_step
                 if step % mid_log_step == 0:
                     print_rank(get_log(global_loss, global_distil_loss, 0))
+                    if get_rank() == 0:
+                        wandblog_rank(
+                            wandb_run,
+                            rank=0,
+                            epoch=epoch,
+                            iter_step=step,
+                            step=global_step,
+                            global_step=global_step,
+                            global_loss=global_loss,
+                            global_distil_loss=global_distil_loss,
+                            lr=lr_scheduler.get_last_lr()[0],
+                            scale=optimizer.cur_scale if hasattr(optimizer, "cur_scale") else 0, #NOTE JC
+                            total_elapsed_time=elapsed_time,
+                        )
 
             if global_step % args.log_interval == 0 and step % args.gradient_accumulation_steps == 0:
                 log_str = get_log(
                     total_loss / (args.log_interval * args.gradient_accumulation_steps),
                     total_distil_loss / (args.log_interval * args.gradient_accumulation_steps),
                     total_time / (args.log_interval))
+                if get_rank() == 0:
+                    wandblog_rank(
+                        wandb_run,
+                        rank=0,
+                        epoch=epoch,
+                        step=step,
+                        global_step=global_step,
+                        log_loss=total_loss / (args.log_interval * args.gradient_accumulation_steps),
+                        distil_loss=total_distil_loss / (args.log_interval * args.gradient_accumulation_steps),
+                        lr=lr_scheduler.get_last_lr()[0],
+                        scale=optimizer.cur_scale if hasattr(optimizer, "cur_scale") else 0, #NOTE JC
+                        log_time=total_time / (args.log_interval),
+                    )
                 print_rank("*" * 100)
                 print_rank(log_str)
                 print_rank(args.save)
@@ -409,13 +436,20 @@ def finetune(args, tokenizer: AutoTokenizer, model: deepspeed.DeepSpeedEngine, o
                 dist.barrier()
 
             # Evaluation
-            if args.eval_interval and global_step % args.eval_interval == 0 and step % args.gradient_accumulation_steps == 0:
-                curr_avg_loss = evaluate(args, tokenizer, model, dataset["dev"], "dev", epoch, device, adaptive_threshold)
+            if args.eval_interval and global_step % args.eval_interval == 0 and step % args.gradient_accumulation_steps == 0 \
+                and global_step != 0: #NOTE JC. Don't do first evaluation
+                curr_avg_loss = evaluate(args, tokenizer, model, dataset["dev"], "dev", epoch, device, adaptive_threshold, wandb_run=wandb_run)
                 if "adaptive" in args.type:
                     if curr_avg_loss >= prev_avg_loss + args.loss_eps:
                         adaptive_threshold += 0.1
                         adaptive_threshold = min(adaptive_threshold, 1.0)
                         prev_avg_loss = curr_avg_loss
+                if get_rank() == 0:
+                    wandblog_rank(
+                        wandb_run,
+                        step=global_step,
+                        validation_loss=curr_avg_loss
+                    )
                     
                 model.train()
                 
@@ -429,7 +463,7 @@ def finetune(args, tokenizer: AutoTokenizer, model: deepspeed.DeepSpeedEngine, o
     return model
 
 
-def evaluate(args, tokenizer, model, dataset: LMTrainDataset, split, epoch, device, adaptive_threshold=None):
+def evaluate(args, tokenizer, model, dataset: LMTrainDataset, split, epoch, device, adaptive_threshold=None, wandb_run=None):
     
     collate_fn = dataset.collate
 
@@ -532,6 +566,14 @@ def evaluate(args, tokenizer, model, dataset: LMTrainDataset, split, epoch, devi
         else:
             log_str = f"{split} | avg_loss: {avg_loss} | {res}"
         print_rank(log_str)
+        wandblog_rank(
+            wandb_run,
+            epoch=epoch,
+            avg_loss=avg_loss,
+            adaptive_threshold=adaptive_threshold if "adaptive" in args.type else None,
+            **res,
+            commit=True
+        )
         save_rank(log_str, os.path.join(args.save, "log.txt"))
         
     return all_loss / step
@@ -568,6 +610,19 @@ def main():
     
     # get the tokenizer
     tokenizer = get_tokenizer(args)
+
+    #NOTE JC wandb
+    wandb_run = None
+    if 'wandb' in ds_config and ds_config['wandb']['enabled'] == True:
+        import wandb
+        wandb_run = wandb.init(
+            project=ds_config['wandb']['project'],
+            group=ds_config['wandb']['group'],
+        )
+        ds_config.pop('wandb') # use custom wandb logging
+    print(f"wandb_run = {wandb_run}")
+    
+    
     dataset = prepare_dataset(
         args,
         tokenizer,
@@ -589,7 +644,9 @@ def main():
         
         if args.eval_interval == -1:
             args.eval_interval = args.train_iters_per_epoch
-    
+        
+    # Log arguments 
+    wandb.config.update(vars(args))
     model, optimizer, lr_scheduler = setup_model_and_optimizer(args, ds_config, device, set_optim=args.do_train)
     
     if args.teacher_model_type is None:
@@ -601,10 +658,10 @@ def main():
         teacher_model = None
     
     if args.do_train:
-        model = finetune(args, tokenizer, model, optimizer, lr_scheduler, dataset, device, teacher_model=teacher_model)
+        model = finetune(args, tokenizer, model, optimizer, lr_scheduler, dataset, device, teacher_model=teacher_model, wandb_run=wandb_run)
    
     if args.do_eval:
-        evaluate(args, tokenizer, model, dataset["test"], "test", 0, device)
+        evaluate(args, tokenizer, model, dataset["test"], "test", 0, device, wandb_run=wandb_run)
         
     
 if __name__ == "__main__":

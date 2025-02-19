@@ -14,20 +14,20 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 
 # model
 BASE_PATH=${1-"/home/MiniLLM"}
-CKPT_NAME="gpt2-base"
+CKPT_NAME="gpt2-medium"
 CKPT="${BASE_PATH}/checkpoints/${CKPT_NAME}/"
-# CKPT="gpt2" # download automatically
+# CKPT="gpt2-medium" # download automatically
 # data
 DATA_DIR="${BASE_PATH}/processed_data/dolly/full/gpt2/"
 # hp
 BATCH_SIZE=8
 LR=0.0005
 GRAD_ACC=1
-EVAL_BATCH_SIZE=32
+EVAL_BATCH_SIZE=8
 # length
 MAX_LENGTH=512
 # runtime
-SAVE_PATH="${BASE_PATH}/results/gpt2-base/train/sft"
+SAVE_PATH="${BASE_PATH}/results/gpt2/train/sft"
 # seed
 SEED=10
 
@@ -52,7 +52,7 @@ OPTS+=" --warmup-iters 0"
 OPTS+=" --lr-decay-style cosine"
 OPTS+=" --weight-decay 1e-2"
 OPTS+=" --clip-grad 1.0"
-OPTS+=" --epochs 20"
+OPTS+=" --epochs 3"
 # length
 OPTS+=" --max-length ${MAX_LENGTH}"
 OPTS+=" --max-prompt-length 256"

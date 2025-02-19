@@ -7,7 +7,7 @@ PYTHONPATH=${BASE_PATH} python3 ${BASE_PATH}/tools/process_data_dolly.py \
     --data-dir ${BASE_PATH}/data/dolly/ \
     --processed-data-dir ${BASE_PATH}/processed_data/dolly/prompt \
     --model-path ${BASE_PATH}/checkpoints/gpt2-large \
-    --data-process-workers 32 \
+    --data-process-workers 1 \
     --max-prompt-length 256 \
     --dev-num 1000 \
     --only-prompt \
@@ -18,7 +18,7 @@ PYTHONPATH=${BASE_PATH} python3 ${BASE_PATH}/tools/process_data_dolly.py \
     --data-dir ${BASE_PATH}/data/dolly/ \
     --processed-data-dir ${BASE_PATH}/processed_data/dolly/full \
     --model-path ${BASE_PATH}/checkpoints/gpt2-large \
-    --data-process-workers 32 \
+    --data-process-workers 1 \
     --max-prompt-length 256 \
     --dev-num 1000 \
     --model-type gpt2

@@ -7,7 +7,7 @@ from .trainer import PPOTrainer
 
 from utils import get_rank, print_rank, all_gather, save_rank
 from .utils import get_rev_kl
-from transformers import mpu
+# from transformers import mpu
 
 class PPOSampler():
     """

@@ -19,6 +19,8 @@ from transformers import (
     AutoConfig,
 )
 
+import wandb
+
 
 # Logging
 def print_args(args):
@@ -40,6 +42,11 @@ def print_rank(*args, rank=0, **kwargs):
     if not dist.is_initialized() or dist.get_rank() == rank:
         print(*args, **kwargs)
 
+def wandblog_rank(run, rank=0, **kwargs):
+    if run is None:
+        return
+    print(f"wandb log = {kwargs}")
+    run.log(kwargs)
 
 # Distributed
 def all_gather(t, dim=0, world_size=None, group=None, op="cat"):
