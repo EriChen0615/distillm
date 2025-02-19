@@ -27,7 +27,7 @@ LR=0.00005
 GRAD_ACC=1
 EVAL_BATCH_SIZE=4
 # length
-MAX_LENGTH=2048
+MAX_LENGTH=512
 # runtime
 SAVE_PATH="${BASE_PATH}/results/qwen2.5-0.5B-Instruct/gsm8k/train/sft"
 # seed
@@ -61,8 +61,8 @@ OPTS+=" --max-length ${MAX_LENGTH}"
 OPTS+=" --max-prompt-length 256"
 # runtime
 OPTS+=" --do-train"
-# OPTS+=" --do-valid"
-# OPTS+=" --eval-gen"
+OPTS+=" --do-valid"
+OPTS+=" --eval-gen"
 OPTS+=" --save-interval -1"
 OPTS+=" --eval-interval -1"
 OPTS+=" --log-interval 4"
@@ -71,7 +71,7 @@ OPTS+=" --save ${SAVE_PATH}"
 # seed
 OPTS+=" --seed ${SEED}"
 # deepspeed
-# OPTS+=" --deepspeed"
+OPTS+=" --deepspeed"
 OPTS+=" --deepspeed_config ${BASE_PATH}/configs/deepspeed/ds_config.json"
 # type
 OPTS+=" --type lm"
@@ -83,7 +83,7 @@ OPTS+=" --temperature 1.0"
 
 
 export NCCL_DEBUG=""
-export WANDB_DISABLED=True
+export WANDB_DISABLED=False
 export TF_CPP_MIN_LOG_LEVEL=3
 export PYTHONPATH=${BASE_PATH}
 CMD="torchrun ${DISTRIBUTED_ARGS} ${BASE_PATH}/finetune.py ${OPTS} $@"
