@@ -327,6 +327,14 @@ def finetune(args, tokenizer: AutoTokenizer, model: deepspeed.DeepSpeedEngine, o
                     
                 model.train()
 
+            # print(model_batch)
+            #NOTE JC debugging
+            # tmp = torch.zeros_like(no_model_batch["label"][0])
+            # print(tokenizer.decode(model_batch["input_ids"][0]))
+            # print(tokenizer.decode(torch.where(model_batch["input_ids"][0]!=tokenizer.pad_token_id, model_batch["input_ids"][0], tmp)))
+            # print(tokenizer.decode(torch.where(no_model_batch["label"][0]>0, no_model_batch["label"][0], tmp)))
+            # print("In finetune prior to forward")
+            # breakpoint()
             outputs = model(**model_batch, use_cache=False)
             
             logits = outputs.logits
@@ -532,6 +540,11 @@ def evaluate(args, tokenizer, model, dataset: LMTrainDataset, split, epoch, devi
                 
                 response_ids = full_ids[:, gen_data["input_ids"].size(1):]
                 all_response_ids.append(response_ids)
+                #NOTE JC debugging
+                # print(tokenizer.decode(gen_data['input_ids'][0]))
+                # print(tokenizer.decode(gen_out.sequences[0]))
+                # print(tokenizer.decode(response_ids[0]))
+                # breakpoint()
                     
             dist.all_reduce(loss, dist.ReduceOp.SUM, group=dp_group)
             loss = loss / dp_world_size

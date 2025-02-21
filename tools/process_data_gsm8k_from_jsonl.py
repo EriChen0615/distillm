@@ -21,45 +21,40 @@ class Encoder(object):
 
     def encode(self, line):
         line = json.loads(line)
-        if "input" not in line or len(line["input"]) == 0:
-            if self.args.model_type!="qwen":
-                template = (
-                    "Below is an instruction that describes a task. "
-                    "Write a response that appropriately completes the request.\n\n"
-                    "### Instruction:\n{instruction}\n\n### Response:\n"
-                )
-            else:
-                template = (
-                    "<|im_start|>Below is an instruction that describes a task. "
-                    "Write a response that appropriately completes the request.\n\n"
-                    "### Instruction:\n{instruction}\n\n### Response:\n<|im_end|><|im_start|>Assistant:"
-                )
-            prompt = template.format(instruction=line["instruction"])
+        
+        # Create messages for chat template
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": f"{line['instruction']}\nQuestion: {line['input']}\n"}
+        ]
+        
+        # Use tokenizer's chat template for prompt
+        prompt = Encoder.tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True)
+        
+        if self.args.model_type != "qwen":
+            response = line["output"]
         else:
-            if self.args.model_type!="qwen":
-                template = (
-                    "Below is an instruction that describes a task, paired with an input that provides further context. "
-                    "Write a response that appropriately completes the request.\n\n"
-                    "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:\n"
-                )
-            else:
-                template = (
-                    "<|im_start|>Below is an instruction that describes a task, paired with an input that provides further context. "
-                    "Write a response that appropriately completes the request.\n\n"
-                    "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:\n<|im_end|><|im_start|>Assistant:"
-                )
-            prompt = template.format(instruction=line["instruction"], input=line["input"])
+            # For Qwen, we need to format the response properly too
+            messages.append({"role": "assistant", "content": line["output"]})
+            full_text = Encoder.tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=False,  # Don't add system/user messages
+            )
             
-        response = line["output"]
         prompt_tokens = Encoder.tokenizer.encode(prompt, add_special_tokens=False)
-        full_tokens = Encoder.tokenizer.encode(prompt + response, add_special_tokens=False) + [Encoder.tokenizer.eos_token_id]
+        full_tokens = Encoder.tokenizer.encode(full_text, add_special_tokens=False)
+        response_str = full_text.removeprefix(prompt)
         response_tokens = full_tokens[len(prompt_tokens):]
         
         if len(prompt_tokens) > self.args.max_prompt_length:
             prompt_tokens = prompt_tokens[:self.args.max_prompt_length]
             # return None, None, None, None, len(line)
         
-        return line, prompt, prompt_tokens, response_tokens, len(line)
+        return line, prompt, prompt_tokens, response_tokens, len(line), response_str
 
 
 def main():
@@ -112,11 +107,16 @@ def main():
         
         json_file = open(os.path.join(args.processed_data_dir, f"{split}.jsonl"), "w")
         
-        for lid, (line, prompt_str, prompt, response, bytes_processed) in enumerate(encoded_docs):
+        for lid, (line, prompt_str, prompt, response, bytes_processed, response_str) in enumerate(encoded_docs):
             total_bytes_processed += bytes_processed
             if prompt is None:
                 continue
             
+            #NOTE JC verify prompt and response format for instruct model
+            # print("Prompt:", prompt_str)
+            # print("Response:", response_str)
+            # breakpoint()
+
             if args.only_prompt:
                 if len(prompt) < args.max_length:
                     binary_builder.add_item(torch.IntTensor(prompt))
@@ -128,12 +128,20 @@ def main():
                 else:
                     binary_builder.add_item(torch.IntTensor(prompt + [160000] + response))
 
-            json_file.write(json.dumps({
-                "instruction": line["instruction"],
-                "prompt": prompt_str,
-                "input": line["input"],
-                "output": line["output"],
-            }) + "\n")
+            if args.model_type != "qwen":
+                json_file.write(json.dumps({
+                    "instruction": line["instruction"],
+                    "prompt": prompt_str,
+                    "input": line["input"],
+                    "output": line["output"],
+                }) + "\n")
+            else:
+                json_file.write(json.dumps({
+                    "instruction": line["instruction"],
+                    "prompt": prompt_str,
+                    "input": line["input"],
+                    "output": response_str,
+                }) + "\n")
 
             prompt_lens.append(len(prompt))
             response_lens.append(len(response))

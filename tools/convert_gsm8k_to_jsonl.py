@@ -3,7 +3,7 @@ import json
 import argparse
 from datasets import load_dataset
 
-MATH_INSTRUCTION = "Please solve this math problem step by step. Give your final answer as a number."
+MATH_INSTRUCTION = "Please solve this math problem step by step. Give your final answer as a number after '####'"
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Convert GSM8K dataset to JSONL format')

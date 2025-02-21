@@ -17,7 +17,7 @@ from transformers import AutoTokenizer
 from arguments import get_args
 from datasets import load_dataset
 
-MATH_INSTRUCTION = "Please solve this math problem step by step. Give your final answer as a number."
+MATH_INSTRUCTION = "Please solve this math problem step by step. Give your final answer as a number after '####'"
 # 1. Implement an Encoder, which gives it a line of input data and it returns you the tokenized result.
 class Encoder(object): 
     def __init__(self, args):
@@ -35,9 +35,7 @@ class Encoder(object):
             )
         else:
             template = (
-                "<|im_start|>Below is an instruction that describes a task, paired with an input that provides further context. "
-                "Write a response that appropriately completes the request.\n\n"
-                "### Instruction:\n{instruction}\n\n### Question:\n{input}\n\n### Response:\n<|im_end|><|im_start|>Assistant:"
+                "<|im_start|>system\n{instruction}<|im_end|>\n<im_start>user\n{input}<im_end>\n Response:\n<|im_end|>"
             )
         prompt = template.format(
             instruction=MATH_INSTRUCTION,
@@ -134,6 +132,8 @@ def main():
         # Then process valid examples
         for lid, (line, prompt_str, prompt, response, bytes_processed) in enumerate(valid_examples):
             total_bytes_processed += bytes_processed
+            print(prompt)
+            breakpoint()
             
             if args.only_prompt:
                 binary_builder.add_item(torch.IntTensor(prompt))
