@@ -23,9 +23,10 @@ CKPT="../../hf_models/${CKPT_NAME}"
 DATA_DIR="${BASE_PATH}/processed_data/gsm8k/qwen2.5/full/qwen/"
 # hp
 BATCH_SIZE=8
-LR=0.000005
+LR=0.00001
 GRAD_ACC=8
 EVAL_BATCH_SIZE=16
+EPOCHS=3
 # length
 MAX_LENGTH=512
 # runtime
@@ -56,7 +57,7 @@ OPTS+=" --warmup-iters 0"
 OPTS+=" --lr-decay-style cosine"
 OPTS+=" --weight-decay 1e-2"
 OPTS+=" --clip-grad 1.0"
-OPTS+=" --epochs 20"
+OPTS+=" --epochs ${EPOCHS}" 
 # length
 OPTS+=" --max-length ${MAX_LENGTH}"
 OPTS+=" --max-prompt-length 256"
@@ -88,7 +89,7 @@ export WANDB_DISABLED=False
 export TF_CPP_MIN_LOG_LEVEL=3
 export PYTHONPATH=${BASE_PATH}
 export WANDB_PROJECT="gsm8k-expo"
-export WANDB_NAME="gsm8k_qwen2.5-0.5B/sft-lr-${LR}-bs-${BATCH_SIZE}-grad-${GRAD_ACC}-eval-bs-${EVAL_BATCH_SIZE}-max-length-${MAX_LENGTH}-max-prompt-length-${MAX_PROMPT_LENGTH}-seed-${SEED}"
+export WANDB_NAME="gsm8k_qwen2.5-0.5B/sft-lr-${LR}-bs-${BATCH_SIZE}-grad-${GRAD_ACC}-eval-bs-${EVAL_BATCH_SIZE}-max-length-${MAX_LENGTH}-max-prompt-length-${MAX_PROMPT_LENGTH}-seed-${SEED}-ep-${EPOCHS}"
 CMD="torchrun ${DISTRIBUTED_ARGS} ${BASE_PATH}/finetune.py ${OPTS} $@"
 
 echo ${CMD}
