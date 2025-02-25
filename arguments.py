@@ -37,6 +37,11 @@ def add_model_args(parser: argparse.ArgumentParser):
     group.add_argument("--no-value", action="store_true")
     group.add_argument("--dropout-path-rate", type=float, default=None)
     group.add_argument("--fp32", action="store_true")
+    # group.add_argument("--use-lora", action="store_true")
+    # group.add_argument("--lora-rank", type=int, default=8)
+    # group.add_argument("--lora-alpha", type=int, default=32)
+    # group.add_argument("--lora-dropout", type=float, default=0.1)
+    # group.add_argument("--lora-target", type=str, default="all")
     return parser
 
 
