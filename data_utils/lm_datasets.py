@@ -56,6 +56,7 @@ class LMTrainDataset(Dataset):
         
         separator_token = 160000 if self.args.model_type == "qwen" else 65535 #NOTE JC:  4294967295 is max of uint32. Qwen needs uint32 instead of uint16 due to vocabulary size.  
         # print(f"Model Type={self.args.model_type}. Separator token: {separator_token}")
+        prompt = None #NOTE JC: cautious. Slient BUG may come in here. Make sure that the separator token is correctly added and that the model type is correctly specified. 
         if separator_token in input_ids:
             source_len = np.where(input_ids==separator_token)[0][0]
             prompt = input_ids[:source_len]

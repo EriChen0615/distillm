@@ -14,7 +14,7 @@ DISTRIBUTED_ARGS="--nproc_per_node $GPUS_PER_NODE \
 
 # model
 BASE_PATH=${1-"."}
-CKPT_NAME="Qwen/Qwen2.5-3B-Instruct"
+CKPT_NAME="Qwen/Qwen2.5-7B-Instruct"
 # CKPT="${CKPT_NAME}/"
 CKPT="../../hf_models/${CKPT_NAME}"
 #CKPT="${BASE_PATH}/checkpoints/${CKPT_NAME}/"
@@ -22,15 +22,14 @@ CKPT="../../hf_models/${CKPT_NAME}"
 # data
 DATA_DIR="${BASE_PATH}/processed_data/gsm8k/qwen2.5/full/qwen/"
 # hp
-BATCH_SIZE=4
+BATCH_SIZE=1
 LR=0.000005
-GRAD_ACC=16
+GRAD_ACC=64
 EVAL_BATCH_SIZE=16
-EPOCHS=10
 # length
 MAX_LENGTH=512
 # runtime
-SAVE_PATH="${BASE_PATH}/results/qwen2.5-3B-Instruct/gsm8k/train/sft"
+SAVE_PATH="${BASE_PATH}/results/qwen2.5-7B-Instruct/gsm8k/train/sft"
 # seed
 SEED=10
 
@@ -46,9 +45,8 @@ OPTS+=" --model-type qwen"
 # data
 OPTS+=" --data-dir ${DATA_DIR}"
 OPTS+=" --num-workers 0"
-OPTS+=" --dev-num 256"
 # OPTS+=" --dev-num 256"
-# OPTS+=" --dev-num 32"
+OPTS+=" --dev-num 256"
 # hp
 OPTS+=" --lr ${LR}"
 OPTS+=" --batch-size ${BATCH_SIZE}"
@@ -58,11 +56,7 @@ OPTS+=" --warmup-iters 0"
 OPTS+=" --lr-decay-style cosine"
 OPTS+=" --weight-decay 1e-2"
 OPTS+=" --clip-grad 1.0"
-OPTS+=" --epochs ${EPOCHS}"
-OPTS+=" --peft lora"
-OPTS+=" --peft-lora-r 8"
-OPTS+=" --peft-lora-alpha 32"
-OPTS+=" --peft-lora-dropout 0.1"
+OPTS+=" --epochs 3"
 # length
 OPTS+=" --max-length ${MAX_LENGTH}"
 OPTS+=" --max-prompt-length 256"
@@ -93,8 +87,7 @@ export NCCL_DEBUG=""
 export WANDB_DISABLED=False
 export TF_CPP_MIN_LOG_LEVEL=3
 export PYTHONPATH=${BASE_PATH}
-export WANDB_PROJECT="gsm8k-expo"
-export WANDB_NAME="gsm8k_qwen2.5-3B/lora_sft-lr-${LR}-bs-${BATCH_SIZE}-grad-${GRAD_ACC}-eval-bs-${EVAL_BATCH_SIZE}-max-length-${MAX_LENGTH}-max-prompt-length-${MAX_PROMPT_LENGTH}-seed-${SEED}"
+export WANDB_NAME="gsm8k_qwen2.5-7B/sft-lr-${LR}-bs-${BATCH_SIZE}-grad-${GRAD_ACC}-eval-bs-${EVAL_BATCH_SIZE}-max-length-${MAX_LENGTH}-max-prompt-length-${MAX_PROMPT_LENGTH}-seed-${SEED}"
 CMD="torchrun ${DISTRIBUTED_ARGS} ${BASE_PATH}/finetune.py ${OPTS} $@"
 
 echo ${CMD}
