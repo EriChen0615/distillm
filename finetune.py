@@ -172,6 +172,7 @@ def pt_loss(args, model, model_batch, no_model_batch):
 
 
 def get_distil_loss(args, tokenizer, model, teacher_model, model_batch, no_model_batch, logits):
+    vocab_size = len(tokenizer.get_vocab())
     with torch.no_grad():
         teacher_model.eval()
         teacher_outputs = teacher_model(**model_batch, use_cache=False)
@@ -180,17 +181,17 @@ def get_distil_loss(args, tokenizer, model, teacher_model, model_batch, no_model
         raise NotImplementedError
     else:
         if "sfkl" in args.type:
-            distil_loss = skewed_forward_kl(logits, teacher_logits, no_model_batch, lam=args.skew_alpha)
+            distil_loss = skewed_forward_kl(logits, teacher_logits, no_model_batch, vocab_size, lam=args.skew_alpha)
         elif "srkl" in args.type:
-            distil_loss = skewed_reverse_kl(logits, teacher_logits, no_model_batch, lam=args.skew_alpha)
+            distil_loss = skewed_reverse_kl(logits, teacher_logits, no_model_batch, vocab_size, lam=args.skew_alpha)
         elif "jsd" in args.type:
-            distil_loss = js_distance(logits, teacher_logits, no_model_batch)
+            distil_loss = js_distance(logits, teacher_logits, no_model_batch, vocab_size)
         elif "tvd" in args.type:
-            distil_loss = tv_distance(logits, teacher_logits, no_model_batch)
+            distil_loss = tv_distance(logits, teacher_logits, no_model_batch, vocab_size)
         elif "fkl" in args.type or args.type == "kd":
-            distil_loss = forward_kl(logits, teacher_logits, no_model_batch)
+            distil_loss = forward_kl(logits, teacher_logits, no_model_batch, vocab_size)
         elif "rkl" in args.type:
-            distil_loss = reverse_kl(logits, teacher_logits, no_model_batch)
+            distil_loss = reverse_kl(logits, teacher_logits, no_model_batch, vocab_size)
         else:
             raise NotImplementedError
     return distil_loss

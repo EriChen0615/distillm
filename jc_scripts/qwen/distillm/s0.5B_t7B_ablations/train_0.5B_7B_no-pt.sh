@@ -48,7 +48,7 @@ EPOCHS=10
 # length
 MAX_LENGTH=512
 # runtime
-SAVE_PATH="${BASE_PATH}/results/qwen2.5-0.5B-Instruct/gsm8k/train/distillm/7B_teacher_10ep"
+SAVE_PATH="${BASE_PATH}/results/qwen2.5-0.5B-Instruct/gsm8k/train/distillm/7B_teacher_10ep-no_ptloss"
 # seed
 SEED=10
 
@@ -69,7 +69,7 @@ OPTS+=" --model-type qwen"
 # OPTS+=" --peft-name ${PEFT_NAME}"
 # data
 OPTS+=" --data-dir ${DATA_DIR}"
-OPTS+=" --lm-data-dir ${LM_DATA_DIR}"
+# OPTS+=" --lm-data-dir ${LM_DATA_DIR}"
 OPTS+=" --num-workers 4"
 OPTS+=" --dev-num 256"
 # OPTS+=" --dev-num 16"
@@ -119,7 +119,7 @@ OPTS+=" --capacity 1000"
 
 export NCCL_DEBUG=""
 # export WANDB_DISABLED=False
-export WANDB_NAME="gsm8k_qwen2.5-0.5B/distillm_from_init_teacher=7B-LoRASFT-10ep_-lr-${LR}-bs-${BATCH_SIZE}-grad-${GRAD_ACC}-max-length-${MAX_LENGTH}-max-prompt-length-${MAX_PROMPT_LENGTH}-seed-${SEED}-ep-${EPOCHS}"
+export WANDB_NAME="gsm8k_qwen2.5-0.5B/distillm_from_init_teacher=7B-LoRASFT-10ep-no_ptloss-lr-${LR}-bs-${BATCH_SIZE}-grad-${GRAD_ACC}-max-length-${MAX_LENGTH}-max-prompt-length-${MAX_PROMPT_LENGTH}-seed-${SEED}-ep-${EPOCHS}"
 export TF_CPP_MIN_LOG_LEVEL=3
 export PYTHONPATH=${BASE_PATH}
 CMD="torchrun ${DISTRIBUTED_ARGS} ${BASE_PATH}/finetune.py ${OPTS} $@"
